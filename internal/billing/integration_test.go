@@ -117,7 +117,11 @@ func TestIntegration_GetOutstandingBalance(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	outstandingBalance, err := billingSvc.GetOutstandingBalance(billing.CustomerID, billing.LoanID)
+	req := dto.GetOutstandingRequest{
+		CustomerID: 1,
+		LoanID:     1,
+	}
+	outstandingBalance, err := billingSvc.GetOutstandingBalance(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 5500000, outstandingBalance)
 }
@@ -129,5 +133,12 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	billing := createTestBilling(t)
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
-	assert.False(t, billing.IsDelinquent)
+
+	req := dto.IsDelinquentRequest{
+		CustomerID: 1,
+		LoanID:     1,
+	}
+	isDelinquent, err := billingSvc.IsDelinquent(req)
+	assert.NoError(t, err)
+	assert.False(t, isDelinquent)
 }

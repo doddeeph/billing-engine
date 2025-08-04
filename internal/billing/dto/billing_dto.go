@@ -7,3 +7,13 @@ type CreateBillingRequest struct {
 	LoanInterest int  `json:"loanInterest"`
 	LoanWeeks    int  `json:"loanWeeks"`
 }
+
+type GetOutstandingRequest struct {
+	CustomerID uint `json:"customerId"`
+	LoanID     uint `json:"loanId"`
+}
+
+type IsDelinquentRequest struct {
+	CustomerID uint `json:"customerId"`
+	LoanID     uint `json:"loanId"`
+}

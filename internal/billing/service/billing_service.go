@@ -8,8 +8,8 @@ import (
 
 type BillingService interface {
 	CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error)
-	GetOutstandingBalance(customerID, loanID uint) (int, error)
-	IsDelinquent(customerID, loanID uint) (bool, error)
+	GetOutstandingBalance(req dto.GetOutstandingRequest) (int, error)
+	IsDelinquent(req dto.IsDelinquentRequest) (bool, error)
 }
 
 type billingService struct {
@@ -39,16 +39,16 @@ func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.B
 	return billing, nil
 }
 
-func (svc *billingService) GetOutstandingBalance(customerID uint, loanID uint) (int, error) {
-	billing, err := svc.repo.FindByCustomerIdAndLoanId(customerID, loanID)
+func (svc *billingService) GetOutstandingBalance(req dto.GetOutstandingRequest) (int, error) {
+	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID)
 	if err != nil {
 		return 0, err
 	}
 	return billing.OutstandingBalance, nil
 }
 
-func (svc *billingService) IsDelinquent(customerID uint, loanID uint) (bool, error) {
-	billing, err := svc.repo.FindByCustomerIdAndLoanId(customerID, loanID)
+func (svc *billingService) IsDelinquent(req dto.IsDelinquentRequest) (bool, error) {
+	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID)
 	if err != nil {
 		return false, err
 	}

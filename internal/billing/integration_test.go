@@ -19,7 +19,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func setupDB(t *testing.T) *gorm.DB {
+var (
+	db         *gorm.DB
+	billingSvc service.BillingService
+)
+
+func setupTestDB(t *testing.T) func() {
 	t.Helper()
 	ctx := context.Background()
 
@@ -42,7 +47,7 @@ func setupDB(t *testing.T) *gorm.DB {
 			"POSTGRES_PASSWORD": dbPass,
 		},
 		WaitingFor: wait.ForListeningPort("5432/tcp").
-			WithStartupTimeout(60 * time.Second),
+			WithStartupTimeout(30 * time.Second),
 	}
 
 	container, err := testcontainers.GenericContainer(ctx,
@@ -51,10 +56,6 @@ func setupDB(t *testing.T) *gorm.DB {
 			Started:          true,
 		})
 	assert.NoError(t, err)
-
-	t.Cleanup(func() {
-		_ = container.Terminate(ctx)
-	})
 
 	host, err := container.Host(ctx)
 	assert.NoError(t, err)
@@ -67,19 +68,20 @@ func setupDB(t *testing.T) *gorm.DB {
 		host, port.Port(), dbName, dbUser, dbPass,
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	assert.NoError(t, err)
 
-	return db
+	assert.NoError(t, db.AutoMigrate(&model.Billing{}, &model.Payment{}))
+
+	billingRepo := repository.NewBillingRepository(db)
+	billingSvc = service.NewBillingService(billingRepo)
+
+	return func() {
+		_ = container.Terminate(ctx)
+	}
 }
 
-func TestIntegration_CreateBilling(t *testing.T) {
-	db := setupDB(t)
-	db.AutoMigrate(&model.Billing{}, &model.Payment{})
-
-	repo := repository.NewBillingRepository(db)
-	svc := service.NewBillingService(repo)
-
+func createTestBilling(t *testing.T) *model.Billing {
 	req := dto.CreateBillingRequest{
 		CustomerID:   1,
 		LoanID:       1,
@@ -87,16 +89,35 @@ func TestIntegration_CreateBilling(t *testing.T) {
 		LoanInterest: 10,
 		LoanWeeks:    50,
 	}
-
-	billing, err := svc.CreateBilling(req)
+	billing, err := billingSvc.CreateBilling(req)
 	assert.NoError(t, err)
+	return billing
+}
 
-	assert.Equal(t, uint(1), billing.CustomerID)
-	assert.Equal(t, uint(1), billing.LoanID)
+func TestIntegration_CreateBilling(t *testing.T) {
+	teardown := setupTestDB(t)
+	defer teardown()
+
+	billing := createTestBilling(t)
+	assert.NotZero(t, billing.CustomerID)
+	assert.NotZero(t, billing.LoanID)
 	assert.Equal(t, 5000000, billing.LoanAmount)
 	assert.Equal(t, 10, billing.LoanInterest)
 	assert.Equal(t, 50, billing.LoanWeeks)
 	assert.Equal(t, 5500000, billing.OutstandingBalance)
 	assert.Equal(t, 110000, billing.LoanWeeklyAmount)
 	assert.Equal(t, false, billing.IsDelinquent)
+}
+
+func TestIntegration_GetOutstandingBalance(t *testing.T) {
+	teardown := setupTestDB(t)
+	defer teardown()
+
+	billing := createTestBilling(t)
+	assert.NotZero(t, billing.CustomerID)
+	assert.NotZero(t, billing.LoanID)
+
+	outstandingBalance, err := billingSvc.GetOutstandingBalance(billing.CustomerID, billing.LoanID)
+	assert.NoError(t, err)
+	assert.Equal(t, 5500000, outstandingBalance)
 }

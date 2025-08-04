@@ -8,6 +8,7 @@ import (
 
 type BillingService interface {
 	CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error)
+	GetOutstandingBalance(customerID, loanID uint) (int, error)
 }
 
 type billingService struct {
@@ -35,4 +36,12 @@ func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.B
 		return nil, err
 	}
 	return billing, nil
+}
+
+func (svc *billingService) GetOutstandingBalance(customerID uint, loanID uint) (int, error) {
+	billing, err := svc.repo.FindByCustomerIdAndLoanId(customerID, loanID)
+	if err != nil {
+		return 0, err
+	}
+	return billing.OutstandingBalance, nil
 }

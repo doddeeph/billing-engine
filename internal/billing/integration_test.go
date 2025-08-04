@@ -121,3 +121,13 @@ func TestIntegration_GetOutstandingBalance(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5500000, outstandingBalance)
 }
+
+func TestIntegration_IsDelinquent(t *testing.T) {
+	teardown := setupTestDB(t)
+	defer teardown()
+
+	billing := createTestBilling(t)
+	assert.NotZero(t, billing.CustomerID)
+	assert.NotZero(t, billing.LoanID)
+	assert.False(t, billing.IsDelinquent)
+}

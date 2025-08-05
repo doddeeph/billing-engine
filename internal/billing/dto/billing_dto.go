@@ -13,7 +13,3 @@ type GetOutstandingRequest struct {
 	LoanID     uint `json:"loanId"`
 }
 
-type IsDelinquentRequest struct {
-	CustomerID uint `json:"customerId"`
-	LoanID     uint `json:"loanId"`
-}

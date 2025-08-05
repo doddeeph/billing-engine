@@ -11,7 +11,6 @@ type Billing struct {
 	LoanInterest       int       `json:"loanInterest"`
 	LoanWeeklyAmount   int       `json:"loanWeeklyAmount"`
 	OutstandingBalance int       `json:"outstandingBalance"`
-	IsDelinquent       bool      `json:"isDelinquent"`
 	Payments           []Payment `gorm:"foreignKey:BillingID"`
 	gorm.Model
 }

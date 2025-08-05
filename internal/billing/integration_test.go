@@ -111,7 +111,6 @@ func TestIntegration_CreateBilling(t *testing.T) {
 	assert.Equal(t, 50, billing.LoanWeeks)
 	assert.Equal(t, 5500000, billing.OutstandingBalance)
 	assert.Equal(t, 110000, billing.LoanWeeklyAmount)
-	assert.Equal(t, false, billing.IsDelinquent)
 }
 
 func TestIntegration_GetOutstandingBalance(t *testing.T) {

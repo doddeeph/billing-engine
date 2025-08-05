@@ -1,6 +1,8 @@
 package service
 
 import (
+	"sort"
+
 	"github.com/doddeeph/billing-engine/internal/billing/dto"
 	"github.com/doddeeph/billing-engine/internal/billing/model"
 	"github.com/doddeeph/billing-engine/internal/billing/repository"
@@ -39,7 +41,6 @@ func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.B
 		LoanInterest:       req.LoanInterest,
 		OutstandingBalance: outstandingBalance,
 		LoanWeeklyAmount:   loanWeeklyAmount,
-		IsDelinquent:       false,
 	}
 	if err := svc.repo.Create(billing); err != nil {
 		return nil, err
@@ -56,11 +57,24 @@ func (svc *billingService) GetOutstandingBalance(req dto.GetOutstandingRequest) 
 }
 
 func (svc *billingService) IsDelinquent(req dto.IsDelinquentRequest) (bool, error) {
-	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, false)
+	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, true)
 	if err != nil {
 		return false, err
 	}
-	return billing.IsDelinquent, nil
+	payments := billing.Payments
+	sort.Slice(payments, func(i, j int) bool {
+		return payments[i].Week < payments[j].Week
+	})
+	missed := 0
+	for i, p := range payments {
+		if p.Week == i && !p.Paid {
+			missed++
+		}
+		if missed > 2 {
+			break
+		}
+	}
+	return missed > 2, nil
 }
 
 func (svc *billingService) FindByCustomerIdAndLoanId(customerID uint, loanID uint, includePayments bool) (*model.Billing, error) {

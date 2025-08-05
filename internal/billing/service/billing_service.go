@@ -1,7 +1,8 @@
 package service
 
 import (
-	"sort"
+	"os"
+	"strconv"
 
 	"github.com/doddeeph/billing-engine/internal/billing/dto"
 	"github.com/doddeeph/billing-engine/internal/billing/model"
@@ -19,15 +20,25 @@ type BillingService interface {
 }
 
 type billingService struct {
-	repo repository.BillingRepository
+	repo             repository.BillingRepository
+	missedPaymentMax int
+}
+
+func getMissedPaymentMax() int {
+	missedPaymentMaxStr := os.Getenv("MISSED_PAYMENT_MAX")
+	missedPaymentMax, err := strconv.Atoi(missedPaymentMaxStr)
+	if err != nil {
+		missedPaymentMax = 2
+	}
+	return missedPaymentMax
 }
 
 func NewBillingService(repo repository.BillingRepository) BillingService {
-	return &billingService{repo}
+	return &billingService{repo: repo, missedPaymentMax: getMissedPaymentMax()}
 }
 
 func (svc *billingService) WithTransaction(tx *gorm.DB) BillingService {
-	return &billingService{svc.repo.WithTransaction(tx)}
+	return &billingService{repo: svc.repo.WithTransaction(tx), missedPaymentMax: getMissedPaymentMax()}
 }
 
 func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error) {
@@ -69,20 +80,18 @@ func (svc *billingService) IsDelinquent(req dto.IsDelinquentRequest) (bool, erro
 	if err != nil {
 		return false, err
 	}
-	payments := billing.Payments
-	sort.Slice(payments, func(i, j int) bool {
-		return payments[i].Week < payments[j].Week
-	})
 	missed := 0
-	for i, p := range payments {
-		if p.Week == i && !p.Paid {
+	for _, p := range billing.Payments {
+		if !p.Paid {
 			missed++
+		} else if p.Paid {
+			missed = 0
 		}
-		if missed > 2 {
+		if missed >= svc.missedPaymentMax {
 			break
 		}
 	}
-	return missed > 2, nil
+	return missed >= svc.missedPaymentMax, nil
 }
 
 func (svc *billingService) FindByCustomerIdAndLoanId(customerID uint, loanID uint, includePayments bool) (*model.Billing, error) {

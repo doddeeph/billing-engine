@@ -146,13 +146,21 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	req := dto.IsDelinquentRequest{
+	paymentReq := dto.PaymetRequest{
+		CustomerID: 1,
+		LoanID:     1,
+		Week:       3,
+	}
+ 	err := paymentSvc.MakePayment(paymentReq)
+	assert.NoError(t, err)
+
+	isDelinquentReq := dto.IsDelinquentRequest{
 		CustomerID: 1,
 		LoanID:     1,
 	}
-	isDelinquent, err := billingSvc.IsDelinquent(req)
+	isDelinquent, err := billingSvc.IsDelinquent(isDelinquentReq)
 	assert.NoError(t, err)
-	assert.False(t, isDelinquent)
+	assert.True(t, isDelinquent)
 }
 
 func TestIntregration_MakePayment(t *testing.T) {

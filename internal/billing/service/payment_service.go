@@ -10,7 +10,8 @@ import (
 )
 
 type PaymentService interface {
-	MakePayment(req dto.MakePaymetRequest) error
+	MakePayment(req dto.PaymetRequest) error
+	MissedPayment(req dto.PaymetRequest) error
 }
 
 type paymentService struct {
@@ -22,7 +23,7 @@ func NewPaymentService(repo repository.PaymentRepository, billingSvc BillingServ
 	return &paymentService{repo: repo, billingSvc: billingSvc}
 }
 
-func (svc *paymentService) MakePayment(req dto.MakePaymetRequest) error {
+func (svc *paymentService) MakePayment(req dto.PaymetRequest) error {
 	return svc.repo.WithDB().Transaction(func(tx *gorm.DB) error {
 		txBillingSvc := svc.billingSvc.WithTransaction(tx)
 		txPaymentRepo := svc.repo.WithTransaction(tx)
@@ -61,5 +62,36 @@ func (svc *paymentService) MakePayment(req dto.MakePaymetRequest) error {
 		}
 
 		return nil
+	})
+}
+
+func (svc *paymentService) MissedPayment(req dto.PaymetRequest) error {
+	return svc.repo.WithDB().Transaction(func(tx *gorm.DB) error {
+		txBillingSvc := svc.billingSvc.WithTransaction(tx)
+		txPaymentRepo := svc.repo.WithTransaction(tx)
+
+		billing, err := txBillingSvc.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, true)
+		if err != nil {
+			return err
+		}
+
+		if req.Week < 0 || req.Week > billing.LoanWeeks {
+			return fmt.Errorf("Payment is outside %d loan week.", billing.LoanWeeks)
+		}
+
+		for _, p := range billing.Payments {
+			if p.Week == req.Week && p.Paid {
+				return fmt.Errorf("Week %d has been paid.", req.Week)
+			}
+		}
+
+		payment := &model.Payment{
+			BillingID: billing.ID,
+			Amount:    0,
+			Week:      req.Week,
+			Paid:      false,
+		}
+
+		return  txPaymentRepo.Create(payment)
 	})
 }

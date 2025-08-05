@@ -7,6 +7,6 @@ type Payment struct {
 	BillingID uint `json:"billingId"`
 	Amount    int  `json:"amount"`
 	Week      int  `json:"week"`
-	Paid      bool `json:"paid"`
+	Paid      bool `gorm:"default:false" json:"paid"`
 	gorm.Model
 }

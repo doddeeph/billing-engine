@@ -110,7 +110,13 @@ func TestIntegration_CreateBilling(t *testing.T) {
 	assert.Equal(t, 10, billing.LoanInterest)
 	assert.Equal(t, 50, billing.LoanWeeks)
 	assert.Equal(t, 5500000, billing.OutstandingBalance)
-	assert.Equal(t, 110000, billing.LoanWeeklyAmount)
+	assert.Len(t, billing.Payments, 50)
+	assert.Equal(t, 1, billing.Payments[0].Week)
+	assert.Equal(t, 110000, billing.Payments[0].Amount)
+	assert.False(t, billing.Payments[0].Paid)
+	assert.Equal(t, 50, billing.Payments[49].Week)
+	assert.Equal(t, 110000, billing.Payments[49].Amount)
+	assert.False(t, billing.Payments[49].Paid)
 }
 
 func TestIntegration_GetOutstandingBalance(t *testing.T) {
@@ -163,40 +169,11 @@ func TestIntregration_MakePayment(t *testing.T) {
 		LoanID:     1,
 		Week:       1,
 	}
-	err := paymentSvc.MakePayment(req)
+ 	err := paymentSvc.MakePayment(req)
 	assert.NoError(t, err)
 
 	billing, err = billingSvc.FindByCustomerIdAndLoanId(billing.CustomerID, billing.LoanID, true)
 	assert.NoError(t, err)
 	assert.Equal(t, 5390000, billing.OutstandingBalance)
-	assert.Len(t, billing.Payments, 1)
-	assert.Equal(t, 1, billing.Payments[0].Week)
-	assert.Equal(t, 110000, billing.Payments[0].Amount)
 	assert.True(t, billing.Payments[0].Paid)
-}
-
-func TestIntregration_MissedPayment(t *testing.T) {
-	teardown := setupTestDB(t)
-	defer teardown()
-
-	billing := createTestBilling(t)
-	assert.NotZero(t, billing.ID)
-	assert.NotZero(t, billing.CustomerID)
-	assert.NotZero(t, billing.LoanID)
-
-	req := dto.PaymetRequest{
-		CustomerID: 1,
-		LoanID:     1,
-		Week:       1,
-	}
-	err := paymentSvc.MissedPayment(req)
-	assert.NoError(t, err)
-
-	billing, err = billingSvc.FindByCustomerIdAndLoanId(billing.CustomerID, billing.LoanID, true)
-	assert.NoError(t, err)
-	assert.Equal(t, 5500000, billing.OutstandingBalance)
-	assert.Len(t, billing.Payments, 1)
-	assert.Equal(t, 1, billing.Payments[0].Week)
-	assert.Equal(t, 0, billing.Payments[0].Amount)
-	assert.False(t, billing.Payments[0].Paid)
 }

@@ -33,6 +33,14 @@ func (svc *billingService) WithTransaction(tx *gorm.DB) BillingService {
 func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error) {
 	outstandingBalance := req.LoanAmount + (req.LoanAmount * req.LoanInterest / 100)
 	loanWeeklyAmount := outstandingBalance / req.LoanWeeks
+	payments := make([]model.Payment, req.LoanWeeks)
+	for i := range payments {
+		payments[i] = model.Payment{
+			Amount: loanWeeklyAmount,
+			Week:   i + 1,
+			Paid:   false,
+		}
+	}
 	billing := &model.Billing{
 		CustomerID:         req.CustomerID,
 		LoanID:             req.LoanID,
@@ -40,7 +48,7 @@ func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.B
 		LoanWeeks:          req.LoanWeeks,
 		LoanInterest:       req.LoanInterest,
 		OutstandingBalance: outstandingBalance,
-		LoanWeeklyAmount:   loanWeeklyAmount,
+		Payments:           payments,
 	}
 	if err := svc.repo.Create(billing); err != nil {
 		return nil, err

@@ -6,8 +6,10 @@ import (
 )
 
 type BillingRepository interface {
+	WithTransaction(tx *gorm.DB) BillingRepository
 	Create(billing *model.Billing) error
-	FindByCustomerIdAndLoanId(customerID, loanID uint) (*model.Billing, error)
+	FindByCustomerIdAndLoanId(customerID, loanID uint, includePayments bool) (*model.Billing, error)
+	UpdateOutstandingBalance(billingID uint, balance int) error
 }
 
 type billingRepository struct {
@@ -18,15 +20,27 @@ func NewBillingRepository(db *gorm.DB) BillingRepository {
 	return &billingRepository{db}
 }
 
+func (r *billingRepository) WithTransaction(tx *gorm.DB) BillingRepository {
+	return &billingRepository{tx}
+}
+
 func (r *billingRepository) Create(billing *model.Billing) error {
 	return r.db.Create(billing).Error
 }
 
-func (r *billingRepository) FindByCustomerIdAndLoanId(customerID, loanID uint) (*model.Billing, error) {
+func (r *billingRepository) FindByCustomerIdAndLoanId(customerID, loanID uint, includePayments bool) (*model.Billing, error) {
 	var billing model.Billing
-	err := r.db.Where("customer_id = ? AND loan_id = ?", customerID, loanID).First(&billing).Error
+	query := r.db.Model(&model.Billing{})
+	if includePayments {
+		query = query.Preload("Payments")
+	}
+	err := query.Where("customer_id = ? AND loan_id = ?", customerID, loanID).First(&billing).Error
 	if err != nil {
 		return nil, err
 	}
 	return &billing, nil
+}
+
+func (r *billingRepository) UpdateOutstandingBalance(billingID uint, balance int) error {
+	return r.db.Model(&model.Billing{}).Where("id = ?", billingID).Update("outstanding_balance", balance).Error
 }

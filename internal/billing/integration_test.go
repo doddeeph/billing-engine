@@ -22,6 +22,7 @@ import (
 var (
 	db         *gorm.DB
 	billingSvc service.BillingService
+	paymentSvc service.PaymentService
 )
 
 func setupTestDB(t *testing.T) func() {
@@ -76,6 +77,9 @@ func setupTestDB(t *testing.T) func() {
 	billingRepo := repository.NewBillingRepository(db)
 	billingSvc = service.NewBillingService(billingRepo)
 
+	paymentRepo := repository.NewPaymentRepository(db)
+	paymentSvc = service.NewPaymentService(paymentRepo, billingSvc)
+
 	return func() {
 		_ = container.Terminate(ctx)
 	}
@@ -99,6 +103,7 @@ func TestIntegration_CreateBilling(t *testing.T) {
 	defer teardown()
 
 	billing := createTestBilling(t)
+	assert.NotZero(t, billing.ID)
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 	assert.Equal(t, 5000000, billing.LoanAmount)
@@ -114,6 +119,7 @@ func TestIntegration_GetOutstandingBalance(t *testing.T) {
 	defer teardown()
 
 	billing := createTestBilling(t)
+	assert.NotZero(t, billing.ID)
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
@@ -131,6 +137,7 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	defer teardown()
 
 	billing := createTestBilling(t)
+	assert.NotZero(t, billing.ID)
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
@@ -141,4 +148,30 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	isDelinquent, err := billingSvc.IsDelinquent(req)
 	assert.NoError(t, err)
 	assert.False(t, isDelinquent)
+}
+
+func TestIntregration_MakePayment(t *testing.T) {
+	teardown := setupTestDB(t)
+	defer teardown()
+
+	billing := createTestBilling(t)
+	assert.NotZero(t, billing.ID)
+	assert.NotZero(t, billing.CustomerID)
+	assert.NotZero(t, billing.LoanID)
+
+	req := dto.MakePaymetRequest{
+		CustomerID: 1,
+		LoanID:     1,
+		Week:       1,
+	}
+	err := paymentSvc.MakePayment(req)
+	assert.NoError(t, err)
+
+	billing, err = billingSvc.FindByCustomerIdAndLoanId(billing.CustomerID, billing.LoanID, true)
+	assert.NoError(t, err)
+	assert.Equal(t, 5390000, billing.OutstandingBalance)
+	assert.Len(t, billing.Payments, 1)
+	assert.Equal(t, 1, billing.Payments[0].Week)
+	assert.Equal(t, 110000, billing.Payments[0].Amount)
+	assert.True(t, billing.Payments[0].Paid)
 }

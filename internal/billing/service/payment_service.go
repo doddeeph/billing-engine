@@ -12,16 +12,16 @@ type PaymentService interface {
 	MakePayment(req dto.PaymetRequest) error
 }
 
-type paymentService struct {
+type paymentServiceImpl struct {
 	repo       repository.PaymentRepository
 	billingSvc BillingService
 }
 
 func NewPaymentService(repo repository.PaymentRepository, billingSvc BillingService) PaymentService {
-	return &paymentService{repo: repo, billingSvc: billingSvc}
+	return &paymentServiceImpl{repo: repo, billingSvc: billingSvc}
 }
 
-func (svc *paymentService) MakePayment(req dto.PaymetRequest) error {
+func (svc *paymentServiceImpl) MakePayment(req dto.PaymetRequest) error {
 	return svc.repo.WithDB().Transaction(func(trx *gorm.DB) error {
 		trxBillingSvc := svc.billingSvc.WithTransaction(trx)
 		trxPaymentRepo := svc.repo.WithTransaction(trx)

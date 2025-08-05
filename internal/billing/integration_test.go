@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -128,11 +129,8 @@ func TestIntegration_GetBilling(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	req := dto.GetBillingRequest{
-		CustomerID: 1,
-		LoanID:     1,
-	}
-	billingFromDB, err := billingSvc.GetBilling(req)
+	id := strconv.FormatUint(uint64(billing.ID), 10)
+	billingFromDB, err := billingSvc.GetBilling(id)
 	assert.NoError(t, err)
 	assert.NotZero(t, billingFromDB.ID)
 	assert.NotZero(t, billingFromDB.CustomerID)
@@ -149,11 +147,8 @@ func TestIntegration_GetOutstandingBalance(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	req := dto.GetOutstandingRequest{
-		CustomerID: 1,
-		LoanID:     1,
-	}
-	outstandingBalance, err := billingSvc.GetOutstandingBalance(req)
+	id := strconv.FormatUint(uint64(billing.ID), 10)
+	outstandingBalance, err := billingSvc.GetOutstanding(id)
 	assert.NoError(t, err)
 	assert.Equal(t, 5500000, outstandingBalance)
 }
@@ -175,11 +170,8 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	err := paymentSvc.MakePayment(paymentReq)
 	assert.NoError(t, err)
 
-	isDelinquentReq := dto.IsDelinquentRequest{
-		CustomerID: 1,
-		LoanID:     1,
-	}
-	isDelinquent, err := billingSvc.IsDelinquent(isDelinquentReq)
+	id := strconv.FormatUint(uint64(billing.ID), 10)
+	isDelinquent, err := billingSvc.IsDelinquent(id)
 	assert.NoError(t, err)
 	assert.True(t, isDelinquent)
 }
@@ -198,7 +190,7 @@ func TestIntregration_MakePayment(t *testing.T) {
 		LoanID:     1,
 		Week:       1,
 	}
- 	err := paymentSvc.MakePayment(req)
+	err := paymentSvc.MakePayment(req)
 	assert.NoError(t, err)
 
 	billing, err = billingSvc.FindByCustomerIdAndLoanId(billing.CustomerID, billing.LoanID, true)

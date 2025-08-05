@@ -13,14 +13,14 @@ import (
 type BillingService interface {
 	WithTransaction(tx *gorm.DB) BillingService
 	CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error)
-	GetBilling(req dto.GetBillingRequest) (*model.Billing, error)
-	GetOutstandingBalance(req dto.GetOutstandingRequest) (int, error)
-	IsDelinquent(req dto.IsDelinquentRequest) (bool, error)
+	GetBilling(id string) (*model.Billing, error)
+	GetOutstanding(id string) (int, error)
+	IsDelinquent(id string) (bool, error)
 	FindByCustomerIdAndLoanId(customerID, loanID uint, includePayments bool) (*model.Billing, error)
 	UpdateOutstandingBalance(billingID uint, balance int) error
 }
 
-type billingService struct {
+type billingServiceImpl struct {
 	repo             repository.BillingRepository
 	missedPaymentMax int
 }
@@ -35,14 +35,14 @@ func getMissedPaymentMax() int {
 }
 
 func NewBillingService(repo repository.BillingRepository) BillingService {
-	return &billingService{repo: repo, missedPaymentMax: getMissedPaymentMax()}
+	return &billingServiceImpl{repo: repo, missedPaymentMax: getMissedPaymentMax()}
 }
 
-func (svc *billingService) WithTransaction(tx *gorm.DB) BillingService {
-	return &billingService{repo: svc.repo.WithTransaction(tx), missedPaymentMax: getMissedPaymentMax()}
+func (svc *billingServiceImpl) WithTransaction(tx *gorm.DB) BillingService {
+	return &billingServiceImpl{repo: svc.repo.WithTransaction(tx), missedPaymentMax: getMissedPaymentMax()}
 }
 
-func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error) {
+func (svc *billingServiceImpl) CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error) {
 	outstandingBalance := req.LoanAmount + (req.LoanAmount * req.LoanInterest / 100)
 	loanWeeklyAmount := outstandingBalance / req.LoanWeeks
 	payments := make([]model.Payment, req.LoanWeeks)
@@ -68,24 +68,20 @@ func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.B
 	return billing, nil
 }
 
-func (svc *billingService) GetBilling(req dto.GetBillingRequest) (*model.Billing, error) {
-	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, true)
-	if err != nil {
-		return nil, err
-	}
-	return billing, nil
+func (svc *billingServiceImpl) GetBilling(id string) (*model.Billing, error) {
+	return svc.repo.FindByID(convertStringToUint(id))
 }
 
-func (svc *billingService) GetOutstandingBalance(req dto.GetOutstandingRequest) (int, error) {
-	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, false)
+func (svc *billingServiceImpl) GetOutstanding(id string) (int, error) {
+	billing, err := svc.repo.FindByID(convertStringToUint(id))
 	if err != nil {
 		return 0, err
 	}
 	return billing.OutstandingBalance, nil
 }
 
-func (svc *billingService) IsDelinquent(req dto.IsDelinquentRequest) (bool, error) {
-	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, true)
+func (svc *billingServiceImpl) IsDelinquent(id string) (bool, error) {
+	billing, err := svc.repo.FindByID(convertStringToUint(id))
 	if err != nil {
 		return false, err
 	}
@@ -103,10 +99,15 @@ func (svc *billingService) IsDelinquent(req dto.IsDelinquentRequest) (bool, erro
 	return missed >= svc.missedPaymentMax, nil
 }
 
-func (svc *billingService) FindByCustomerIdAndLoanId(customerID uint, loanID uint, includePayments bool) (*model.Billing, error) {
+func (svc *billingServiceImpl) FindByCustomerIdAndLoanId(customerID uint, loanID uint, includePayments bool) (*model.Billing, error) {
 	return svc.repo.FindByCustomerIdAndLoanId(customerID, loanID, includePayments)
 }
 
-func (svc *billingService) UpdateOutstandingBalance(billingID uint, balance int) error {
+func (svc *billingServiceImpl) UpdateOutstandingBalance(billingID uint, balance int) error {
 	return svc.repo.UpdateOutstandingBalance(billingID, balance)
+}
+
+func convertStringToUint(s string) uint {
+	billingID, _ := strconv.ParseUint(s, 10, 32)
+	return uint(billingID)
 }

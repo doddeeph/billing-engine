@@ -13,6 +13,7 @@ import (
 type BillingService interface {
 	WithTransaction(tx *gorm.DB) BillingService
 	CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error)
+	GetBilling(req dto.GetBillingRequest) (*model.Billing, error)
 	GetOutstandingBalance(req dto.GetOutstandingRequest) (int, error)
 	IsDelinquent(req dto.IsDelinquentRequest) (bool, error)
 	FindByCustomerIdAndLoanId(customerID, loanID uint, includePayments bool) (*model.Billing, error)
@@ -62,6 +63,14 @@ func (svc *billingService) CreateBilling(req dto.CreateBillingRequest) (*model.B
 		Payments:           payments,
 	}
 	if err := svc.repo.Create(billing); err != nil {
+		return nil, err
+	}
+	return billing, nil
+}
+
+func (svc *billingService) GetBilling(req dto.GetBillingRequest) (*model.Billing, error) {
+	billing, err := svc.repo.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, true)
+	if err != nil {
 		return nil, err
 	}
 	return billing, nil

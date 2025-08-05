@@ -119,6 +119,27 @@ func TestIntegration_CreateBilling(t *testing.T) {
 	assert.False(t, billing.Payments[49].Paid)
 }
 
+func TestIntegration_GetBilling(t *testing.T) {
+	teardown := setupTestDB(t)
+	defer teardown()
+
+	billing := createTestBilling(t)
+	assert.NotZero(t, billing.ID)
+	assert.NotZero(t, billing.CustomerID)
+	assert.NotZero(t, billing.LoanID)
+
+	req := dto.GetBillingRequest{
+		CustomerID: 1,
+		LoanID:     1,
+	}
+	billingFromDB, err := billingSvc.GetBilling(req)
+	assert.NoError(t, err)
+	assert.NotZero(t, billingFromDB.ID)
+	assert.NotZero(t, billingFromDB.CustomerID)
+	assert.NotZero(t, billingFromDB.LoanID)
+	assert.Len(t, billingFromDB.Payments, 50)
+}
+
 func TestIntegration_GetOutstandingBalance(t *testing.T) {
 	teardown := setupTestDB(t)
 	defer teardown()
@@ -151,7 +172,7 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 		LoanID:     1,
 		Week:       3,
 	}
- 	err := paymentSvc.MakePayment(paymentReq)
+	err := paymentSvc.MakePayment(paymentReq)
 	assert.NoError(t, err)
 
 	isDelinquentReq := dto.IsDelinquentRequest{

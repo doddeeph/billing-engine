@@ -5,6 +5,7 @@ import (
 
 	"github.com/doddeeph/billing-engine/internal/billing/dto"
 	"github.com/doddeeph/billing-engine/internal/billing/service"
+	"github.com/doddeeph/billing-engine/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -44,7 +45,12 @@ func (h *BillingHandler) CreateBilling(c *gin.Context) {
 
 func (h *BillingHandler) GetBilling(c *gin.Context) {
 	id := c.Param("id")
-	billing, err := h.svc.GetBilling(id)
+	billingID, err := utils.ConvertStringToUint(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	billing, err := h.svc.GetBilling(billingID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -54,20 +60,30 @@ func (h *BillingHandler) GetBilling(c *gin.Context) {
 
 func (h *BillingHandler) GetOutstanding(c *gin.Context) {
 	id := c.Param("id")
-	outstanding, err := h.svc.GetOutstanding(id)
+	billingID, err := utils.ConvertStringToUint(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, outstanding)
+	outstandingResp, err := h.svc.GetOutstanding(billingID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, outstandingResp)
 }
 
 func (h *BillingHandler) IsDelinquent(c *gin.Context) {
 	id := c.Param("id")
-	isDelinquent, err := h.svc.IsDelinquent(id)
+	billingID, err := utils.ConvertStringToUint(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, isDelinquent)
+	delinquentResp, err := h.svc.IsDelinquent(billingID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, delinquentResp)
 }

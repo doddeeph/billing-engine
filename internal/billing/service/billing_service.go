@@ -13,11 +13,11 @@ import (
 type BillingService interface {
 	WithTransaction(tx *gorm.DB) BillingService
 	CreateBilling(req dto.CreateBillingRequest) (*model.Billing, error)
-	GetBilling(id string) (*model.Billing, error)
-	GetOutstanding(id string) (int, error)
-	IsDelinquent(id string) (bool, error)
+	GetBilling(id uint) (*model.Billing, error)
+	GetOutstanding(id uint) (*dto.OutstandingResponse, error)
+	IsDelinquent(id uint) (*dto.DelinquentResponse, error)
 	FindByCustomerIdAndLoanId(customerID, loanID uint, includePayments bool) (*model.Billing, error)
-	UpdateOutstandingBalance(billingID uint, balance int) error
+	UpdateOutstanding(billingID uint, balance int) error
 }
 
 type billingServiceImpl struct {
@@ -54,13 +54,13 @@ func (svc *billingServiceImpl) CreateBilling(req dto.CreateBillingRequest) (*mod
 		}
 	}
 	billing := &model.Billing{
-		CustomerID:         req.CustomerID,
-		LoanID:             req.LoanID,
-		LoanAmount:         req.LoanAmount,
-		LoanWeeks:          req.LoanWeeks,
-		LoanInterest:       req.LoanInterest,
-		OutstandingBalance: outstandingBalance,
-		Payments:           payments,
+		CustomerID:   req.CustomerID,
+		LoanID:       req.LoanID,
+		LoanAmount:   req.LoanAmount,
+		LoanWeeks:    req.LoanWeeks,
+		LoanInterest: req.LoanInterest,
+		Outstanding:  outstandingBalance,
+		Payments:     payments,
 	}
 	if err := svc.repo.Create(billing); err != nil {
 		return nil, err
@@ -68,22 +68,27 @@ func (svc *billingServiceImpl) CreateBilling(req dto.CreateBillingRequest) (*mod
 	return billing, nil
 }
 
-func (svc *billingServiceImpl) GetBilling(id string) (*model.Billing, error) {
-	return svc.repo.FindByID(convertStringToUint(id))
+func (svc *billingServiceImpl) GetBilling(id uint) (*model.Billing, error) {
+	return svc.repo.FindByID(id)
 }
 
-func (svc *billingServiceImpl) GetOutstanding(id string) (int, error) {
-	billing, err := svc.repo.FindByID(convertStringToUint(id))
+func (svc *billingServiceImpl) GetOutstanding(id uint) (*dto.OutstandingResponse, error) {
+	billing, err := svc.repo.FindByID(id)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	return billing.OutstandingBalance, nil
+	return &dto.OutstandingResponse{
+		BillingID:   billing.ID,
+		CustomerID:  billing.CustomerID,
+		LoanID:      billing.LoanID,
+		Outstanding: billing.Outstanding,
+	}, nil
 }
 
-func (svc *billingServiceImpl) IsDelinquent(id string) (bool, error) {
-	billing, err := svc.repo.FindByID(convertStringToUint(id))
+func (svc *billingServiceImpl) IsDelinquent(id uint) (*dto.DelinquentResponse, error) {
+	billing, err := svc.repo.FindByID(id)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 	missed := 0
 	for _, p := range billing.Payments {
@@ -96,18 +101,18 @@ func (svc *billingServiceImpl) IsDelinquent(id string) (bool, error) {
 			break
 		}
 	}
-	return missed >= svc.missedPaymentMax, nil
+	return &dto.DelinquentResponse{
+		BillingID:    billing.ID,
+		CustomerID:   billing.CustomerID,
+		LoanID:       billing.LoanID,
+		IsDelinquent: missed >= svc.missedPaymentMax,
+	}, nil
 }
 
 func (svc *billingServiceImpl) FindByCustomerIdAndLoanId(customerID uint, loanID uint, includePayments bool) (*model.Billing, error) {
 	return svc.repo.FindByCustomerIdAndLoanId(customerID, loanID, includePayments)
 }
 
-func (svc *billingServiceImpl) UpdateOutstandingBalance(billingID uint, balance int) error {
-	return svc.repo.UpdateOutstandingBalance(billingID, balance)
-}
-
-func convertStringToUint(s string) uint {
-	billingID, _ := strconv.ParseUint(s, 10, 32)
-	return uint(billingID)
+func (svc *billingServiceImpl) UpdateOutstanding(billingID uint, balance int) error {
+	return svc.repo.UpdateOutstanding(billingID, balance)
 }

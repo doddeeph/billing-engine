@@ -1,17 +1,22 @@
 package billing
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/doddeeph/billing-engine/internal/billing/dto"
+	"github.com/doddeeph/billing-engine/internal/billing/handler"
 	"github.com/doddeeph/billing-engine/internal/billing/model"
 	"github.com/doddeeph/billing-engine/internal/billing/repository"
 	"github.com/doddeeph/billing-engine/internal/billing/service"
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
@@ -24,15 +29,16 @@ var (
 	db         *gorm.DB
 	billingSvc service.BillingService
 	paymentSvc service.PaymentService
+	router     *gin.Engine
 )
 
-func setupTestDB(t *testing.T) func() {
+func setupTest(t *testing.T) func() {
 	t.Helper()
 	ctx := context.Background()
 
 	err := godotenv.Load("../../.env")
 	if err != nil {
-		t.Log(".env Not Found.")
+		t.Fatalf("Error loading .env file: %v", err)
 	}
 
 	dbImage := os.Getenv("DB_TEST_IMAGE")
@@ -77,9 +83,19 @@ func setupTestDB(t *testing.T) func() {
 
 	billingRepo := repository.NewBillingRepository(db)
 	billingSvc = service.NewBillingService(billingRepo)
+	billingHandler := handler.NewBillingHandler(billingSvc)
 
 	paymentRepo := repository.NewPaymentRepository(db)
 	paymentSvc = service.NewPaymentService(paymentRepo, billingSvc)
+	paymentHandler := handler.NewPaymentHandler(paymentSvc)
+
+	gin.SetMode(gin.TestMode)
+	router = gin.Default()
+	router.POST("/billings", billingHandler.CreateBilling)
+	router.GET("/billings/:id", billingHandler.GetBilling)
+	router.GET("/billings/:id/outstanding", billingHandler.GetOutstanding)
+	router.GET("/billings/:id/delinquent", billingHandler.IsDelinquent)
+	router.POST("/billings/:id/payments", paymentHandler.MakePayment)
 
 	return func() {
 		_ = container.Terminate(ctx)
@@ -100,17 +116,32 @@ func createTestBilling(t *testing.T) *model.Billing {
 }
 
 func TestIntegration_CreateBilling(t *testing.T) {
-	teardown := setupTestDB(t)
+	teardown := setupTest(t)
 	defer teardown()
 
-	billing := createTestBilling(t)
+	payload := dto.CreateBillingRequest{
+		CustomerID:   1,
+		LoanID:       1,
+		LoanAmount:   5000000,
+		LoanInterest: 10,
+		LoanWeeks:    50,
+	}
+	payloadBytes, _ := json.Marshal(payload)
+
+	r, _ := http.NewRequest("POST", "/billings", bytes.NewBuffer(payloadBytes))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	assert.Equal(t, 201, w.Code)
+
+	var billing model.Billing
+	json.Unmarshal(w.Body.Bytes(), &billing)
 	assert.NotZero(t, billing.ID)
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 	assert.Equal(t, 5000000, billing.LoanAmount)
 	assert.Equal(t, 10, billing.LoanInterest)
 	assert.Equal(t, 50, billing.LoanWeeks)
-	assert.Equal(t, 5500000, billing.OutstandingBalance)
+	assert.Equal(t, 5500000, billing.Outstanding)
 	assert.Len(t, billing.Payments, 50)
 	assert.Equal(t, 1, billing.Payments[0].Week)
 	assert.Equal(t, 110000, billing.Payments[0].Amount)
@@ -121,7 +152,7 @@ func TestIntegration_CreateBilling(t *testing.T) {
 }
 
 func TestIntegration_GetBilling(t *testing.T) {
-	teardown := setupTestDB(t)
+	teardown := setupTest(t)
 	defer teardown()
 
 	billing := createTestBilling(t)
@@ -129,17 +160,31 @@ func TestIntegration_GetBilling(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	id := strconv.FormatUint(uint64(billing.ID), 10)
-	billingFromDB, err := billingSvc.GetBilling(id)
-	assert.NoError(t, err)
-	assert.NotZero(t, billingFromDB.ID)
-	assert.NotZero(t, billingFromDB.CustomerID)
-	assert.NotZero(t, billingFromDB.LoanID)
-	assert.Len(t, billingFromDB.Payments, 50)
+	r, _ := http.NewRequest("GET", fmt.Sprintf("/billings/%d", billing.ID), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	assert.Equal(t, 200, w.Code)
+
+	var billingResp model.Billing
+	json.Unmarshal(w.Body.Bytes(), &billingResp)
+	assert.NotZero(t, billingResp.ID)
+	assert.NotZero(t, billingResp.CustomerID)
+	assert.NotZero(t, billingResp.LoanID)
+	assert.Equal(t, 5000000, billingResp.LoanAmount)
+	assert.Equal(t, 10, billingResp.LoanInterest)
+	assert.Equal(t, 50, billingResp.LoanWeeks)
+	assert.Equal(t, 5500000, billingResp.Outstanding)
+	assert.Len(t, billingResp.Payments, 50)
+	assert.Equal(t, 1, billingResp.Payments[0].Week)
+	assert.Equal(t, 110000, billingResp.Payments[0].Amount)
+	assert.False(t, billingResp.Payments[0].Paid)
+	assert.Equal(t, 50, billingResp.Payments[49].Week)
+	assert.Equal(t, 110000, billingResp.Payments[49].Amount)
+	assert.False(t, billingResp.Payments[49].Paid)
 }
 
-func TestIntegration_GetOutstandingBalance(t *testing.T) {
-	teardown := setupTestDB(t)
+func TestIntegration_GetOutstanding(t *testing.T) {
+	teardown := setupTest(t)
 	defer teardown()
 
 	billing := createTestBilling(t)
@@ -147,14 +192,18 @@ func TestIntegration_GetOutstandingBalance(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	id := strconv.FormatUint(uint64(billing.ID), 10)
-	outstandingBalance, err := billingSvc.GetOutstanding(id)
-	assert.NoError(t, err)
-	assert.Equal(t, 5500000, outstandingBalance)
+	r, _ := http.NewRequest("GET", fmt.Sprintf("/billings/%d/outstanding", billing.ID), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	assert.Equal(t, 200, w.Code)
+
+	var outstandingResp dto.OutstandingResponse
+	json.Unmarshal(w.Body.Bytes(), &outstandingResp)
+	assert.Equal(t, 5500000, outstandingResp.Outstanding)
 }
 
 func TestIntegration_IsDelinquent(t *testing.T) {
-	teardown := setupTestDB(t)
+	teardown := setupTest(t)
 	defer teardown()
 
 	billing := createTestBilling(t)
@@ -162,22 +211,24 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	paymentReq := dto.PaymetRequest{
-		CustomerID: 1,
-		LoanID:     1,
-		Week:       3,
+	paymentReq := dto.PaymentRequest{
+		Week: 3,
 	}
-	err := paymentSvc.MakePayment(paymentReq)
+	_, err := paymentSvc.MakePayment(billing.ID, paymentReq)
 	assert.NoError(t, err)
 
-	id := strconv.FormatUint(uint64(billing.ID), 10)
-	isDelinquent, err := billingSvc.IsDelinquent(id)
-	assert.NoError(t, err)
-	assert.True(t, isDelinquent)
+	r, _ := http.NewRequest("GET", fmt.Sprintf("/billings/%d/delinquent", billing.ID), nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	assert.Equal(t, 200, w.Code)
+
+	var delinquentResp dto.DelinquentResponse
+	json.Unmarshal(w.Body.Bytes(), &delinquentResp)
+	assert.True(t, delinquentResp.IsDelinquent)
 }
 
 func TestIntregration_MakePayment(t *testing.T) {
-	teardown := setupTestDB(t)
+	teardown := setupTest(t)
 	defer teardown()
 
 	billing := createTestBilling(t)
@@ -185,16 +236,18 @@ func TestIntregration_MakePayment(t *testing.T) {
 	assert.NotZero(t, billing.CustomerID)
 	assert.NotZero(t, billing.LoanID)
 
-	req := dto.PaymetRequest{
-		CustomerID: 1,
-		LoanID:     1,
-		Week:       1,
+	payload := dto.PaymentRequest{
+		Week: 1,
 	}
-	err := paymentSvc.MakePayment(req)
-	assert.NoError(t, err)
+	payloadBytes, _ := json.Marshal(payload)
 
-	billing, err = billingSvc.FindByCustomerIdAndLoanId(billing.CustomerID, billing.LoanID, true)
-	assert.NoError(t, err)
-	assert.Equal(t, 5390000, billing.OutstandingBalance)
-	assert.True(t, billing.Payments[0].Paid)
+	r, _ := http.NewRequest("POST", fmt.Sprintf("/billings/%d/payments", billing.ID), bytes.NewBuffer(payloadBytes))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, r)
+	assert.Equal(t, 200, w.Code)
+
+	var paymentResp dto.PaymentResponse
+	json.Unmarshal(w.Body.Bytes(), &paymentResp)
+	assert.Equal(t, 5390000, paymentResp.Outstanding)
+	assert.True(t, paymentResp.Payment.Paid)
 }

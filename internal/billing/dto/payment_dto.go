@@ -1,12 +1,14 @@
 package dto
 
-type PaymetRequest struct {
-	CustomerID uint `json:"customerId"`
-	LoanID     uint `json:"loanId"`
-	Week       int  `json:"week"`
+import "github.com/doddeeph/billing-engine/internal/billing/model"
+
+type PaymentRequest struct {
+	Week int `json:"week"`
 }
 
-type IsDelinquentRequest struct {
-	CustomerID uint `json:"customerId"`
-	LoanID     uint `json:"loanId"`
+type PaymentResponse struct {
+	CustomerID  uint          `json:"customerId"`
+	LoanID      uint          `json:"loanId"`
+	Outstanding int           `json:"outstanding"`
+	Payment     model.Payment `json:"payment"`
 }

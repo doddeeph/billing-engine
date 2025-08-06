@@ -9,7 +9,7 @@ import (
 )
 
 type PaymentService interface {
-	MakePayment(req dto.PaymetRequest) error
+	MakePayment(billingId uint, req dto.PaymentRequest) (*dto.PaymentResponse, error)
 }
 
 type paymentServiceImpl struct {
@@ -21,12 +21,13 @@ func NewPaymentService(repo repository.PaymentRepository, billingSvc BillingServ
 	return &paymentServiceImpl{repo: repo, billingSvc: billingSvc}
 }
 
-func (svc *paymentServiceImpl) MakePayment(req dto.PaymetRequest) error {
-	return svc.repo.WithDB().Transaction(func(trx *gorm.DB) error {
+func (svc *paymentServiceImpl) MakePayment(billingId uint, req dto.PaymentRequest) (*dto.PaymentResponse, error) {
+	var paymentResp *dto.PaymentResponse
+	err := svc.repo.WithDB().Transaction(func(trx *gorm.DB) error {
 		trxBillingSvc := svc.billingSvc.WithTransaction(trx)
 		trxPaymentRepo := svc.repo.WithTransaction(trx)
 
-		billing, err := trxBillingSvc.FindByCustomerIdAndLoanId(req.CustomerID, req.LoanID, true)
+		billing, err := trxBillingSvc.GetBilling(billingId)
 		if err != nil {
 			return err
 		}
@@ -42,17 +43,27 @@ func (svc *paymentServiceImpl) MakePayment(req dto.PaymetRequest) error {
 		if payment.Paid {
 			return fmt.Errorf("Week %d has been paid.", req.Week)
 		}
-		err = trxPaymentRepo.UpdatePaid(payment.ID)
+		updatedPayment, err := trxPaymentRepo.UpdatePaid(payment, true)
 		if err != nil {
 			return err
 		}
 
-		newOutstandingBalance := billing.OutstandingBalance - payment.Amount
-		err = trxBillingSvc.UpdateOutstandingBalance(billing.ID, newOutstandingBalance)
+		updatedOutstanding := billing.Outstanding - payment.Amount
+		err = trxBillingSvc.UpdateOutstanding(billing.ID, updatedOutstanding)
 		if err != nil {
 			return err
 		}
 
+		paymentResp = &dto.PaymentResponse{
+			CustomerID:  billing.CustomerID,
+			LoanID:      billing.LoanID,
+			Outstanding: updatedOutstanding,
+			Payment:     *updatedPayment,
+		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	return paymentResp, nil
 }

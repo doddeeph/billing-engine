@@ -10,7 +10,7 @@ type BillingRepository interface {
 	Create(billing *model.Billing) error
 	FindByID(ID uint) (*model.Billing, error)
 	FindByCustomerIdAndLoanId(customerID, loanID uint, includePayments bool) (*model.Billing, error)
-	UpdateOutstandingBalance(billingID uint, balance int) error
+	UpdateOutstanding(billingID uint, balance int) error
 }
 
 type billingRepository struct {
@@ -50,6 +50,6 @@ func (r *billingRepository) FindByCustomerIdAndLoanId(customerID, loanID uint, i
 	return &billing, nil
 }
 
-func (r *billingRepository) UpdateOutstandingBalance(billingID uint, balance int) error {
-	return r.db.Model(&model.Billing{}).Where("id = ?", billingID).Update("outstanding_balance", balance).Error
+func (r *billingRepository) UpdateOutstanding(billingID uint, balance int) error {
+	return r.db.Model(&model.Billing{}).Where("id = ?", billingID).Update("outstanding", balance).Error
 }

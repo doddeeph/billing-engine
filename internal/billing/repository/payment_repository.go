@@ -9,7 +9,7 @@ type PaymentRepository interface {
 	WithTransaction(trx *gorm.DB) PaymentRepository
 	WithDB() *gorm.DB
 	FindByBillingIdAndWeek(billingID uint, week int) (*model.Payment, error)
-	UpdatePaid(paymentID uint) error
+	UpdatePaid(payment *model.Payment, paid bool) (*model.Payment, error)
 }
 
 type paymentRepository struct {
@@ -37,6 +37,10 @@ func (r *paymentRepository) FindByBillingIdAndWeek(billingID uint, week int) (*m
 	return &payment, nil
 }
 
-func (r *paymentRepository) UpdatePaid(paymentID uint) error {
-	return r.db.Model(&model.Payment{}).Where("id = ?", paymentID).Update("paid", true).Error
+func (r *paymentRepository) UpdatePaid(payment *model.Payment, paid bool) (*model.Payment, error) {
+	payment.Paid = paid
+	if err := r.db.Save(&payment).Error; err != nil {
+		return nil, err
+	}
+	return payment, nil
 }

@@ -35,7 +35,7 @@ func (h *BillingHandler) CreateBilling(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
-	billing, err := h.svc.CreateBilling(req)
+	billing, err := h.svc.CreateBilling(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -50,7 +50,7 @@ func (h *BillingHandler) GetBilling(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	billing, err := h.svc.GetBilling(billingID)
+	billing, err := h.svc.GetBilling(c.Request.Context(), billingID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -65,7 +65,7 @@ func (h *BillingHandler) GetOutstanding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	outstandingResp, err := h.svc.GetOutstanding(billingID)
+	outstandingResp, err := h.svc.GetOutstanding(c.Request.Context(), billingID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -80,7 +80,7 @@ func (h *BillingHandler) IsDelinquent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	delinquentResp, err := h.svc.IsDelinquent(billingID)
+	delinquentResp, err := h.svc.IsDelinquent(c.Request.Context(), billingID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

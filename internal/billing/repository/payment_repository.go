@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/doddeeph/billing-engine/internal/billing/model"
 	"gorm.io/gorm"
 )
@@ -8,8 +10,8 @@ import (
 type PaymentRepository interface {
 	WithTransaction(trx *gorm.DB) PaymentRepository
 	WithDB() *gorm.DB
-	FindByBillingIdAndWeek(billingID uint, week int) (*model.Payment, error)
-	UpdatePaid(payment *model.Payment, paid bool) (*model.Payment, error)
+	FindByBillingIdAndWeek(ctx context.Context, billingID uint, week int) (*model.Payment, error)
+	UpdatePaid(ctx context.Context, payment *model.Payment, paid bool) (*model.Payment, error)
 }
 
 type paymentRepository struct {
@@ -28,18 +30,18 @@ func (r *paymentRepository) WithDB() *gorm.DB {
 	return r.db
 }
 
-func (r *paymentRepository) FindByBillingIdAndWeek(billingID uint, week int) (*model.Payment, error) {
+func (r *paymentRepository) FindByBillingIdAndWeek(ctx context.Context, billingID uint, week int) (*model.Payment, error) {
 	var payment model.Payment
-	err := r.db.Where("billing_id = ? AND week = ?", billingID, week).First(&payment).Error
+	err := r.db.WithContext(ctx).Where("billing_id = ? AND week = ?", billingID, week).First(&payment).Error
 	if err != nil {
 		return nil, err
 	}
 	return &payment, nil
 }
 
-func (r *paymentRepository) UpdatePaid(payment *model.Payment, paid bool) (*model.Payment, error) {
+func (r *paymentRepository) UpdatePaid(ctx context.Context, payment *model.Payment, paid bool) (*model.Payment, error) {
 	payment.Paid = paid
-	if err := r.db.Save(&payment).Error; err != nil {
+	if err := r.db.WithContext(ctx).Save(&payment).Error; err != nil {
 		return nil, err
 	}
 	return payment, nil

@@ -35,7 +35,7 @@ func (h *PaymentHandler) MakePayment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 		return
 	}
-	paymentResp, err := h.svc.MakePayment(billingID, req)
+	paymentResp, err := h.svc.MakePayment(c.Request.Context(), billingID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/doddeeph/billing-engine/internal/billing/dto"
@@ -9,7 +10,7 @@ import (
 )
 
 type PaymentService interface {
-	MakePayment(billingId uint, req dto.PaymentRequest) (*dto.PaymentResponse, error)
+	MakePayment(ctx context.Context, billingId uint, req dto.PaymentRequest) (*dto.PaymentResponse, error)
 }
 
 type paymentServiceImpl struct {
@@ -21,13 +22,13 @@ func NewPaymentService(repo repository.PaymentRepository, billingSvc BillingServ
 	return &paymentServiceImpl{repo: repo, billingSvc: billingSvc}
 }
 
-func (svc *paymentServiceImpl) MakePayment(billingId uint, req dto.PaymentRequest) (*dto.PaymentResponse, error) {
+func (svc *paymentServiceImpl) MakePayment(ctx context.Context, billingId uint, req dto.PaymentRequest) (*dto.PaymentResponse, error) {
 	var paymentResp *dto.PaymentResponse
 	err := svc.repo.WithDB().Transaction(func(trx *gorm.DB) error {
 		trxBillingSvc := svc.billingSvc.WithTransaction(trx)
 		trxPaymentRepo := svc.repo.WithTransaction(trx)
 
-		billing, err := trxBillingSvc.GetBilling(billingId)
+		billing, err := trxBillingSvc.GetBilling(ctx, billingId)
 		if err != nil {
 			return err
 		}
@@ -36,20 +37,20 @@ func (svc *paymentServiceImpl) MakePayment(billingId uint, req dto.PaymentReques
 			return fmt.Errorf("Payment is outside %d loan week.", billing.LoanWeeks)
 		}
 
-		payment, err := trxPaymentRepo.FindByBillingIdAndWeek(billing.ID, req.Week)
+		payment, err := trxPaymentRepo.FindByBillingIdAndWeek(ctx, billing.ID, req.Week)
 		if err != nil {
 			return err
 		}
 		if payment.Paid {
 			return fmt.Errorf("Week %d has been paid.", req.Week)
 		}
-		updatedPayment, err := trxPaymentRepo.UpdatePaid(payment, true)
+		updatedPayment, err := trxPaymentRepo.UpdatePaid(ctx, payment, true)
 		if err != nil {
 			return err
 		}
 
 		updatedOutstanding := billing.Outstanding - payment.Amount
-		err = trxBillingSvc.UpdateOutstanding(billing.ID, updatedOutstanding)
+		err = trxBillingSvc.UpdateOutstanding(ctx, billing.ID, updatedOutstanding)
 		if err != nil {
 			return err
 		}

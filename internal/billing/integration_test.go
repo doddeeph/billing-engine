@@ -110,7 +110,7 @@ func createTestBilling(t *testing.T) *model.Billing {
 		LoanInterest: 10,
 		LoanWeeks:    50,
 	}
-	billing, err := billingSvc.CreateBilling(req)
+	billing, err := billingSvc.CreateBilling(t.Context(), req)
 	assert.NoError(t, err)
 	return billing
 }
@@ -214,7 +214,7 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	paymentReq := dto.PaymentRequest{
 		Week: 3,
 	}
-	_, err := paymentSvc.MakePayment(billing.ID, paymentReq)
+	_, err := paymentSvc.MakePayment(t.Context(), billing.ID, paymentReq)
 	assert.NoError(t, err)
 
 	r, _ := http.NewRequest("GET", fmt.Sprintf("/billings/%d/delinquent", billing.ID), nil)

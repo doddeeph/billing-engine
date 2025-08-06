@@ -3,9 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"github.com/doddeeph/billing-engine/internal/billing/dto"
-	"github.com/doddeeph/billing-engine/internal/billing/service"
-	"github.com/doddeeph/billing-engine/utils"
+	"github.com/doddeeph/billing-engine/internal/dto"
+	"github.com/doddeeph/billing-engine/internal/service"
+	"github.com/doddeeph/billing-engine/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 

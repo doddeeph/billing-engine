@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/doddeeph/billing-engine/internal/billing/handler"
-	"github.com/doddeeph/billing-engine/internal/billing/repository"
-	"github.com/doddeeph/billing-engine/internal/billing/service"
-	"github.com/doddeeph/billing-engine/pkg/billing/config"
+	"github.com/doddeeph/billing-engine/internal/config"
+	"github.com/doddeeph/billing-engine/internal/db"
+	"github.com/doddeeph/billing-engine/internal/handler"
+	"github.com/doddeeph/billing-engine/internal/repository"
+	"github.com/doddeeph/billing-engine/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,9 +19,8 @@ type BillingApp struct {
 }
 
 func NewBillingApp() *BillingApp {
-	config.Load()
-	appPort := config.GetAppPort()
-	db := config.InitBillingDB()
+	appConfig := config.LoadConfig()
+	db := db.InitDB(&appConfig.DB)
 
 	billingRepo := repository.NewBillingRepository(db)
 	billingSvc := service.NewBillingService(billingRepo)
@@ -31,7 +31,7 @@ func NewBillingApp() *BillingApp {
 	paymentHandler := handler.NewPaymentHandler(paymentSvc)
 
 	return &BillingApp{
-		AppPort:        fmt.Sprintf(":%s", appPort),
+		AppPort:        fmt.Sprintf(":%s", appConfig.AppPort),
 		BillingHandler: billingHandler,
 		PaymentHandler: paymentHandler,
 	}

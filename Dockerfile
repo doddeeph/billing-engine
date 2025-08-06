@@ -24,7 +24,7 @@ RUN go mod download
 COPY . .
 
 # Build the Go binary
-RUN go build -o billing-engine ./cmd/billing
+RUN go build -o billing-engine ./cmd
 
 # Copy entrypoint
 COPY entrypoint.sh /entrypoint.sh

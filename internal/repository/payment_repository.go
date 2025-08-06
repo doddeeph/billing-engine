@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/doddeeph/billing-engine/internal/billing/model"
+	"github.com/doddeeph/billing-engine/internal/model"
 	"gorm.io/gorm"
 )
 

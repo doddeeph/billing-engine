@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/doddeeph/billing-engine/internal/billing/model"
+import "github.com/doddeeph/billing-engine/internal/model"
 
 type PaymentRequest struct {
 	Week   int `json:"week"`

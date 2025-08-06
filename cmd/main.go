@@ -1,6 +1,6 @@
 package main
 
-import "github.com/doddeeph/billing-engine/internal/billing"
+import billing "github.com/doddeeph/billing-engine/internal"
 
 func main() {
 	app := billing.NewBillingApp()

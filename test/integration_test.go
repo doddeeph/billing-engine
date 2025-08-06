@@ -1,4 +1,4 @@
-package billing
+package test
 
 import (
 	"bytes"
@@ -7,26 +7,23 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/doddeeph/billing-engine/internal/billing/dto"
-	"github.com/doddeeph/billing-engine/internal/billing/handler"
-	"github.com/doddeeph/billing-engine/internal/billing/model"
-	"github.com/doddeeph/billing-engine/internal/billing/repository"
-	"github.com/doddeeph/billing-engine/internal/billing/service"
+	"github.com/doddeeph/billing-engine/internal/config"
+	"github.com/doddeeph/billing-engine/internal/db"
+	"github.com/doddeeph/billing-engine/internal/dto"
+	"github.com/doddeeph/billing-engine/internal/handler"
+	"github.com/doddeeph/billing-engine/internal/model"
+	"github.com/doddeeph/billing-engine/internal/repository"
+	"github.com/doddeeph/billing-engine/internal/service"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 var (
-	db         *gorm.DB
 	billingSvc service.BillingService
 	paymentSvc service.PaymentService
 	router     *gin.Engine
@@ -35,24 +32,15 @@ var (
 func setupTest(t *testing.T) func() {
 	t.Helper()
 	ctx := context.Background()
-
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		t.Fatalf("Error loading .env file: %v", err)
-	}
-
-	dbImage := os.Getenv("DB_TEST_IMAGE")
-	dbName := os.Getenv("DB_TEST_NAME")
-	dbUser := os.Getenv("DB_TEST_USER")
-	dbPass := os.Getenv("DB_TEST_PASSWORD")
+	testConfig := config.LoadTestConfig()
 
 	req := testcontainers.ContainerRequest{
-		Image:        dbImage,
+		Image:        testConfig.DB.Image,
 		ExposedPorts: []string{"5432/tcp"},
 		Env: map[string]string{
-			"POSTGRES_DB":       dbName,
-			"POSTGRES_USER":     dbUser,
-			"POSTGRES_PASSWORD": dbPass,
+			"POSTGRES_DB":       testConfig.DB.Name,
+			"POSTGRES_USER":     testConfig.DB.User,
+			"POSTGRES_PASSWORD": testConfig.DB.Password,
 		},
 		WaitingFor: wait.ForListeningPort("5432/tcp").
 			WithStartupTimeout(30 * time.Second),
@@ -71,15 +59,13 @@ func setupTest(t *testing.T) func() {
 	port, err := container.MappedPort(ctx, "5432")
 	assert.NoError(t, err)
 
-	dsn := fmt.Sprintf(
-		"host=%s port=%s dbname=%s user=%s password=%s sslmode=disable",
-		host, port.Port(), dbName, dbUser, dbPass,
-	)
-
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	assert.NoError(t, err)
-
-	assert.NoError(t, db.AutoMigrate(&model.Billing{}, &model.Payment{}))
+	db := db.InitDB(&config.DBConfig{
+		Host:     host,
+		Port:     port.Port(),
+		Name:     testConfig.DB.Name,
+		User:     testConfig.DB.User,
+		Password: testConfig.DB.Password,
+	})
 
 	billingRepo := repository.NewBillingRepository(db)
 	billingSvc = service.NewBillingService(billingRepo)
@@ -209,7 +195,7 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	assert.NotZero(t, billing.LoanID)
 
 	paymentReq := dto.PaymentRequest{
-		Week: 3,
+		Week:   3,
 		Amount: 110000,
 	}
 	_, err := paymentSvc.MakePayment(t.Context(), billing.ID, paymentReq)

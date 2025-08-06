@@ -5,9 +5,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/doddeeph/billing-engine/internal/billing/dto"
-	"github.com/doddeeph/billing-engine/internal/billing/model"
-	"github.com/doddeeph/billing-engine/internal/billing/repository"
+	"github.com/doddeeph/billing-engine/internal/dto"
+	"github.com/doddeeph/billing-engine/internal/model"
+	"github.com/doddeeph/billing-engine/internal/repository"
 	"gorm.io/gorm"
 )
 

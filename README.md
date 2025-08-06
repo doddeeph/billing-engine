@@ -38,9 +38,10 @@ We are looking for at least the following methods to be implemented:
     $ pwd
     ../billing-engine
     ```
+- Rename `.env.test.example` to `.env.test`
 - running the project integration tests
     ```text
-    $ go test -v ./internal/billing/
+    $ go test -v ./test/
     ```
 
 ## Running the project
@@ -49,6 +50,7 @@ We are looking for at least the following methods to be implemented:
     $ pwd
     ../billing-engine
     ```
+- Rename `.env.example` to `.env`
 - Running the project with docker compose
     ```text
     $ docker compose up -d --build

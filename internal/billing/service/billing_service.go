@@ -15,9 +15,7 @@ type BillingService interface {
 	WithTransaction(tx *gorm.DB) BillingService
 	CreateBilling(ctx context.Context, req dto.CreateBillingRequest) (*model.Billing, error)
 	GetBilling(ctx context.Context, id uint) (*model.Billing, error)
-	GetOutstanding(ctx context.Context, id uint) (*dto.OutstandingResponse, error)
-	IsDelinquent(ctx context.Context, id uint) (*dto.DelinquentResponse, error)
-	FindByCustomerIdAndLoanId(ctx context.Context, customerID, loanID uint, includePayments bool) (*model.Billing, error)
+	IsDelinquent(ctx context.Context, id uint) (*model.Billing, bool, error)
 	UpdateOutstanding(ctx context.Context, billingID uint, balance int) error
 }
 
@@ -73,23 +71,10 @@ func (svc *billingServiceImpl) GetBilling(ctx context.Context, id uint) (*model.
 	return svc.repo.FindByID(ctx, id)
 }
 
-func (svc *billingServiceImpl) GetOutstanding(ctx context.Context, id uint) (*dto.OutstandingResponse, error) {
+func (svc *billingServiceImpl) IsDelinquent(ctx context.Context, id uint) (*model.Billing, bool, error) {
 	billing, err := svc.repo.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
-	}
-	return &dto.OutstandingResponse{
-		BillingID:   billing.ID,
-		CustomerID:  billing.CustomerID,
-		LoanID:      billing.LoanID,
-		Outstanding: billing.Outstanding,
-	}, nil
-}
-
-func (svc *billingServiceImpl) IsDelinquent(ctx context.Context, id uint) (*dto.DelinquentResponse, error) {
-	billing, err := svc.repo.FindByID(ctx, id)
-	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	missed := 0
 	for _, p := range billing.Payments {
@@ -102,16 +87,7 @@ func (svc *billingServiceImpl) IsDelinquent(ctx context.Context, id uint) (*dto.
 			break
 		}
 	}
-	return &dto.DelinquentResponse{
-		BillingID:    billing.ID,
-		CustomerID:   billing.CustomerID,
-		LoanID:       billing.LoanID,
-		IsDelinquent: missed >= svc.missedPaymentMax,
-	}, nil
-}
-
-func (svc *billingServiceImpl) FindByCustomerIdAndLoanId(ctx context.Context, customerID uint, loanID uint, includePayments bool) (*model.Billing, error) {
-	return svc.repo.FindByCustomerIdAndLoanId(ctx, customerID, loanID, includePayments)
+	return billing, missed >= svc.missedPaymentMax, nil
 }
 
 func (svc *billingServiceImpl) UpdateOutstanding(ctx context.Context, billingID uint, balance int) error {

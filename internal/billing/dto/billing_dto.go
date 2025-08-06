@@ -1,6 +1,6 @@
 package dto
 
-type CreateBillingRequest struct {
+type CreateBillingDTO struct {
 	CustomerID   uint `json:"customerId"`
 	LoanID       uint `json:"loanId"`
 	LoanAmount   int  `json:"loanAmount"`
@@ -8,16 +8,28 @@ type CreateBillingRequest struct {
 	LoanWeeks    int  `json:"loanWeeks"`
 }
 
-type OutstandingResponse struct {
+type CreateBillingRequest struct {
+	CreateBillingDTO
+}
+
+type CreateBillingResponse struct {
 	BillingID   uint `json:"billingId"`
-	CustomerID  uint `json:"customerId"`
-	LoanID      uint `json:"loanId"`
 	Outstanding int  `json:"outstanding"`
+	CreateBillingDTO
+}
+
+type BaseResponse struct {
+	BillingID  uint `json:"billingId"`
+	CustomerID uint `json:"customerId"`
+	LoanID     uint `json:"loanId"`
+}
+
+type OutstandingResponse struct {
+	BaseResponse
+	Outstanding int `json:"outstanding"`
 }
 
 type DelinquentResponse struct {
-	BillingID    uint `json:"billingId"`
-	CustomerID   uint `json:"customerId"`
-	LoanID       uint `json:"loanId"`
+	BaseResponse
 	IsDelinquent bool `json:"isDelinquent"`
 }

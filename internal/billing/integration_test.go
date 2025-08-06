@@ -104,11 +104,13 @@ func setupTest(t *testing.T) func() {
 
 func createTestBilling(t *testing.T) *model.Billing {
 	req := dto.CreateBillingRequest{
-		CustomerID:   1,
-		LoanID:       1,
-		LoanAmount:   5000000,
-		LoanInterest: 10,
-		LoanWeeks:    50,
+		CreateBillingDTO: dto.CreateBillingDTO{
+			CustomerID:   1,
+			LoanID:       1,
+			LoanAmount:   5000000,
+			LoanInterest: 10,
+			LoanWeeks:    50,
+		},
 	}
 	billing, err := billingSvc.CreateBilling(t.Context(), req)
 	assert.NoError(t, err)
@@ -120,11 +122,13 @@ func TestIntegration_CreateBilling(t *testing.T) {
 	defer teardown()
 
 	payload := dto.CreateBillingRequest{
-		CustomerID:   1,
-		LoanID:       1,
-		LoanAmount:   5000000,
-		LoanInterest: 10,
-		LoanWeeks:    50,
+		CreateBillingDTO: dto.CreateBillingDTO{
+			CustomerID:   1,
+			LoanID:       1,
+			LoanAmount:   5000000,
+			LoanInterest: 10,
+			LoanWeeks:    50,
+		},
 	}
 	payloadBytes, _ := json.Marshal(payload)
 
@@ -133,22 +137,15 @@ func TestIntegration_CreateBilling(t *testing.T) {
 	router.ServeHTTP(w, r)
 	assert.Equal(t, 201, w.Code)
 
-	var billing model.Billing
-	json.Unmarshal(w.Body.Bytes(), &billing)
-	assert.NotZero(t, billing.ID)
-	assert.NotZero(t, billing.CustomerID)
-	assert.NotZero(t, billing.LoanID)
-	assert.Equal(t, 5000000, billing.LoanAmount)
-	assert.Equal(t, 10, billing.LoanInterest)
-	assert.Equal(t, 50, billing.LoanWeeks)
-	assert.Equal(t, 5500000, billing.Outstanding)
-	assert.Len(t, billing.Payments, 50)
-	assert.Equal(t, 1, billing.Payments[0].Week)
-	assert.Equal(t, 110000, billing.Payments[0].Amount)
-	assert.False(t, billing.Payments[0].Paid)
-	assert.Equal(t, 50, billing.Payments[49].Week)
-	assert.Equal(t, 110000, billing.Payments[49].Amount)
-	assert.False(t, billing.Payments[49].Paid)
+	var resp dto.CreateBillingResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NotZero(t, resp.BillingID)
+	assert.NotZero(t, resp.CustomerID)
+	assert.NotZero(t, resp.LoanID)
+	assert.Equal(t, 5000000, resp.LoanAmount)
+	assert.Equal(t, 10, resp.LoanInterest)
+	assert.Equal(t, 50, resp.LoanWeeks)
+	assert.Equal(t, 5500000, resp.Outstanding)
 }
 
 func TestIntegration_GetBilling(t *testing.T) {
@@ -165,22 +162,22 @@ func TestIntegration_GetBilling(t *testing.T) {
 	router.ServeHTTP(w, r)
 	assert.Equal(t, 200, w.Code)
 
-	var billingResp model.Billing
-	json.Unmarshal(w.Body.Bytes(), &billingResp)
-	assert.NotZero(t, billingResp.ID)
-	assert.NotZero(t, billingResp.CustomerID)
-	assert.NotZero(t, billingResp.LoanID)
-	assert.Equal(t, 5000000, billingResp.LoanAmount)
-	assert.Equal(t, 10, billingResp.LoanInterest)
-	assert.Equal(t, 50, billingResp.LoanWeeks)
-	assert.Equal(t, 5500000, billingResp.Outstanding)
-	assert.Len(t, billingResp.Payments, 50)
-	assert.Equal(t, 1, billingResp.Payments[0].Week)
-	assert.Equal(t, 110000, billingResp.Payments[0].Amount)
-	assert.False(t, billingResp.Payments[0].Paid)
-	assert.Equal(t, 50, billingResp.Payments[49].Week)
-	assert.Equal(t, 110000, billingResp.Payments[49].Amount)
-	assert.False(t, billingResp.Payments[49].Paid)
+	var resp model.Billing
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.NotZero(t, resp.ID)
+	assert.NotZero(t, resp.CustomerID)
+	assert.NotZero(t, resp.LoanID)
+	assert.Equal(t, 5000000, resp.LoanAmount)
+	assert.Equal(t, 10, resp.LoanInterest)
+	assert.Equal(t, 50, resp.LoanWeeks)
+	assert.Equal(t, 5500000, resp.Outstanding)
+	assert.Len(t, resp.Payments, 50)
+	assert.Equal(t, 1, resp.Payments[0].Week)
+	assert.Equal(t, 110000, resp.Payments[0].Amount)
+	assert.False(t, resp.Payments[0].Paid)
+	assert.Equal(t, 50, resp.Payments[49].Week)
+	assert.Equal(t, 110000, resp.Payments[49].Amount)
+	assert.False(t, resp.Payments[49].Paid)
 }
 
 func TestIntegration_GetOutstanding(t *testing.T) {
@@ -197,9 +194,9 @@ func TestIntegration_GetOutstanding(t *testing.T) {
 	router.ServeHTTP(w, r)
 	assert.Equal(t, 200, w.Code)
 
-	var outstandingResp dto.OutstandingResponse
-	json.Unmarshal(w.Body.Bytes(), &outstandingResp)
-	assert.Equal(t, 5500000, outstandingResp.Outstanding)
+	var resp dto.OutstandingResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, 5500000, resp.Outstanding)
 }
 
 func TestIntegration_IsDelinquent(t *testing.T) {
@@ -222,9 +219,9 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 	router.ServeHTTP(w, r)
 	assert.Equal(t, 200, w.Code)
 
-	var delinquentResp dto.DelinquentResponse
-	json.Unmarshal(w.Body.Bytes(), &delinquentResp)
-	assert.True(t, delinquentResp.IsDelinquent)
+	var resp dto.DelinquentResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.True(t, resp.IsDelinquent)
 }
 
 func TestIntregration_MakePayment(t *testing.T) {

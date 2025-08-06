@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    container_name: billing_db
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports: 
+      - "${DB_PORT}:5432"
+    volumes: 
+      - db_data:/var/lib/postgresql/data
+    restart: always
+    networks:
+      - billing-net
+
+  app:
+    build: .
+    container_name: billing_engine
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_PORT: ${APP_PORT}
+      MISSED_PAYMENT_MAX: ${MISSED_PAYMENT_MAX}
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - billing-net
+
+volumes:
+  db_data:
+
+networks:
+  billing-net:

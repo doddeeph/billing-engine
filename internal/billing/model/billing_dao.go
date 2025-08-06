@@ -1,7 +1,5 @@
 package model
 
-import "gorm.io/gorm"
-
 type Billing struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	CustomerID   uint      `gorm:"not null" json:"customerId"`
@@ -11,5 +9,5 @@ type Billing struct {
 	LoanInterest int       `gorm:"not null" json:"loanInterest"`
 	Outstanding  int       `gorm:"not null" json:"outstanding"`
 	Payments     []Payment `gorm:"foreignKey:BillingID"`
-	gorm.Model
+	CommonModel
 }

@@ -210,6 +210,7 @@ func TestIntegration_IsDelinquent(t *testing.T) {
 
 	paymentReq := dto.PaymentRequest{
 		Week: 3,
+		Amount: 110000,
 	}
 	_, err := paymentSvc.MakePayment(t.Context(), billing.ID, paymentReq)
 	assert.NoError(t, err)
@@ -234,7 +235,8 @@ func TestIntregration_MakePayment(t *testing.T) {
 	assert.NotZero(t, billing.LoanID)
 
 	payload := dto.PaymentRequest{
-		Week: 1,
+		Week:   1,
+		Amount: 110000,
 	}
 	payloadBytes, _ := json.Marshal(payload)
 

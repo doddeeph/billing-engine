@@ -44,6 +44,10 @@ func (svc *paymentServiceImpl) MakePayment(ctx context.Context, billingId uint, 
 		if payment.Paid {
 			return fmt.Errorf("Week %d has been paid.", req.Week)
 		}
+		if req.Amount < payment.Amount {
+			return fmt.Errorf("Insufficient loan amount paid for week %d", req.Week)
+		}
+
 		updatedPayment, err := trxPaymentRepo.UpdatePaid(ctx, payment, true)
 		if err != nil {
 			return err

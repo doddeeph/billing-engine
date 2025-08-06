@@ -31,3 +31,180 @@ We are looking for at least the following methods to be implemented:
 - `GetOutstanding`: This returns the current outstanding on a loan, 0 if no outstanding (or closed),
 - `IsDelinquent`: If there are more than 2 weeks of Non payment of the loan amount
 - `MakePayment`: Make a payment of certain amount on the loan
+
+## Integration Test
+- Go to the project root folder
+    ```text
+    $ pwd
+    ../billing-engine
+    ```
+- running the project integration tests
+    ```text
+    $ go test -v ./internal/billing/
+    ```
+
+## Running the project
+- Go to the project root folder
+    ```text
+    $ pwd
+    ../billing-engine
+    ```
+- Running the project with docker compose
+    ```text
+    $ docker compose up -d --build
+    ```
+
+## REST API
+- Create Billing
+    Request:
+    ```curl
+    curl -X POST http://localhost:8080/api/v1/billings \
+    -H "Content-Type: application/json" \
+    -d '{
+        "customerId": 1,
+        "loanId": 1001,
+        "loanAmount": 5000000,
+        "loanInterest": 10,
+        "loanWeeks": 50
+    }'
+
+    ```
+
+    Response:
+    ```json
+    {
+        "billingId": 1,
+        "outstanding": 5500000,
+        "customerId": 1,
+        "loanId": 1001,
+        "loanAmount": 5000000,
+        "loanInterest": 10,
+        "loanWeeks": 50
+    }
+    ```
+
+- Get Billing
+    Request:
+    ```curl
+    curl -X GET http://localhost:8080/api/v1/billings/1
+    ```
+
+    Response:
+    ```json
+    {
+        "id": 1,
+        "customerId": 1,
+        "loanId": 1001,
+        "loanAmount": 5000000,
+        "loanWeeks": 50,
+        "loanInterest": 10,
+        "outstanding": 5500000,
+        "Payments": [
+            {
+                "id": 1,
+                "billingId": 1,
+                "amount": 110000,
+                "week": 1,
+                "paid": false,
+                "CreatedAt": "2025-08-06T09:27:29.140612Z",
+                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "DeletedAt": null
+            },
+            {
+                "id": 2,
+                "billingId": 1,
+                "amount": 110000,
+                "week": 2,
+                "paid": false,
+                "CreatedAt": "2025-08-06T09:27:29.140612Z",
+                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "DeletedAt": null
+            },
+            {
+                "id": 3,
+                "billingId": 1,
+                "amount": 110000,
+                "week": 3,
+                "paid": false,
+                "CreatedAt": "2025-08-06T09:27:29.140612Z",
+                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "DeletedAt": null
+            },
+            ...
+            {
+                "id": 50,
+                "billingId": 1,
+                "amount": 110000,
+                "week": 50,
+                "paid": false,
+                "CreatedAt": "2025-08-06T09:27:29.140612Z",
+                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "DeletedAt": null
+            }
+        ],
+        "CreatedAt": "2025-08-06T09:27:29.127608Z",
+        "UpdatedAt": "2025-08-06T09:27:29.127608Z",
+        "DeletedAt": null
+    }
+    ```
+
+- Get Outstanding
+    Request:
+    ```curl
+    curl -X GET http://localhost:8080/api/v1/billings/1/outstanding
+    ```
+
+    Response:
+    ```json
+    {
+        "billingId": 1,
+        "customerId": 1,
+        "loanId": 1001,
+        "outstanding": 5500000
+    }
+    ```
+
+- Isdelinquent
+    Request:
+    ```curl
+    curl -X GET http://localhost:8080/api/v1/billings/1/delinquent
+    ```
+
+    Response:
+    ```json
+    {
+        "billingId": 1,
+        "customerId": 1,
+        "loanId": 1001,
+        "isDelinquent": true
+    }
+    ```
+- Make Payment
+Request:
+    ```curl
+    curl -X POST http://localhost:8080/api/v1/billings/1/payments \
+    -H "Content-Type: application/json" \
+    -d '{
+        "week": 1,
+        "amount": 110000
+    }'
+    ```
+
+    Response:
+    ```json
+    {
+        "customerId": 1,
+        "loanId": 1001,
+        "outstanding": 5390000,
+        "payment": {
+            "id": 1,
+            "billingId": 1,
+            "amount": 110000,
+            "week": 1,
+            "paid": true,
+            "CreatedAt": "2025-08-06T09:27:29.140612Z",
+            "UpdatedAt": "2025-08-06T10:06:04.982112354Z",
+            "DeletedAt": null
+        }
+    }
+    ```

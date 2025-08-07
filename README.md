@@ -58,6 +58,7 @@ We are looking for at least the following methods to be implemented:
 
 ## REST API
 - Create Billing
+    
     Request:
     ```curl
     curl -X POST http://localhost:8080/api/v1/billings \
@@ -86,6 +87,7 @@ We are looking for at least the following methods to be implemented:
     ```
 
 - Get Billing
+    
     Request:
     ```curl
     curl -X GET http://localhost:8080/api/v1/billings/1
@@ -108,8 +110,11 @@ We are looking for at least the following methods to be implemented:
                 "amount": 110000,
                 "week": 1,
                 "paid": false,
-                "CreatedAt": "2025-08-06T09:27:29.140612Z",
-                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "startDate": "2025-08-10T17:00:00Z",
+                "dueDate": "2025-08-17T16:59:59Z",
+                "paidDate": null,
+                "CreatedAt": "2025-08-07T04:11:46.661334Z",
+                "UpdatedAt": "2025-08-07T04:11:46.661334Z",
                 "DeletedAt": null
             },
             {
@@ -118,8 +123,11 @@ We are looking for at least the following methods to be implemented:
                 "amount": 110000,
                 "week": 2,
                 "paid": false,
-                "CreatedAt": "2025-08-06T09:27:29.140612Z",
-                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "startDate": "2025-08-17T17:00:00Z",
+                "dueDate": "2025-08-24T16:59:59Z",
+                "paidDate": null,
+                "CreatedAt": "2025-08-07T04:11:46.661334Z",
+                "UpdatedAt": "2025-08-07T04:11:46.661334Z",
                 "DeletedAt": null
             },
             {
@@ -128,8 +136,11 @@ We are looking for at least the following methods to be implemented:
                 "amount": 110000,
                 "week": 3,
                 "paid": false,
-                "CreatedAt": "2025-08-06T09:27:29.140612Z",
-                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "startDate": "2025-08-24T17:00:00Z",
+                "dueDate": "2025-08-31T16:59:59Z",
+                "paidDate": null,
+                "CreatedAt": "2025-08-07T04:11:46.661334Z",
+                "UpdatedAt": "2025-08-07T04:11:46.661334Z",
                 "DeletedAt": null
             },
             ...
@@ -139,50 +150,23 @@ We are looking for at least the following methods to be implemented:
                 "amount": 110000,
                 "week": 50,
                 "paid": false,
-                "CreatedAt": "2025-08-06T09:27:29.140612Z",
-                "UpdatedAt": "2025-08-06T09:27:29.140612Z",
+                "startDate": "2026-07-19T17:00:00Z",
+                "dueDate": "2026-07-26T16:59:59Z",
+                "paidDate": null,
+                "CreatedAt": "2025-08-07T04:11:46.661334Z",
+                "UpdatedAt": "2025-08-07T04:11:46.661334Z",
                 "DeletedAt": null
             }
         ],
-        "CreatedAt": "2025-08-06T09:27:29.127608Z",
-        "UpdatedAt": "2025-08-06T09:27:29.127608Z",
+        "CreatedAt": "2025-08-07T04:11:46.65632Z",
+        "UpdatedAt": "2025-08-07T04:11:46.65632Z",
         "DeletedAt": null
     }
     ```
 
-- Get Outstanding
-    Request:
-    ```curl
-    curl -X GET http://localhost:8080/api/v1/billings/1/outstanding
-    ```
-
-    Response:
-    ```json
-    {
-        "billingId": 1,
-        "customerId": 1,
-        "loanId": 1001,
-        "outstanding": 5500000
-    }
-    ```
-
-- Isdelinquent
-    Request:
-    ```curl
-    curl -X GET http://localhost:8080/api/v1/billings/1/delinquent
-    ```
-
-    Response:
-    ```json
-    {
-        "billingId": 1,
-        "customerId": 1,
-        "loanId": 1001,
-        "isDelinquent": true
-    }
-    ```
 - Make Payment
-Request:
+
+    Request:
     ```curl
     curl -X POST http://localhost:8080/api/v1/billings/1/payments \
     -H "Content-Type: application/json" \
@@ -204,9 +188,46 @@ Request:
             "amount": 110000,
             "week": 1,
             "paid": true,
-            "CreatedAt": "2025-08-06T09:27:29.140612Z",
-            "UpdatedAt": "2025-08-06T10:06:04.982112354Z",
+            "startDate": "2025-08-10T17:00:00Z",
+            "dueDate": "2025-08-17T16:59:59Z",
+            "paidDate": "2025-08-07T04:18:18.024929678Z",
+            "CreatedAt": "2025-08-07T04:11:46.661334Z",
+            "UpdatedAt": "2025-08-07T04:18:18.025158193Z",
             "DeletedAt": null
         }
+    }
+    ```
+
+- Get Outstanding
+
+    Request:
+    ```curl
+    curl -X GET http://localhost:8080/api/v1/billings/1/outstanding
+    ```
+
+    Response:
+    ```json
+    {
+        "billingId": 1,
+        "customerId": 1,
+        "loanId": 1001,
+        "outstanding": 5390000
+    }
+    ```
+
+- Is Delinquent
+
+    Request:
+    ```curl
+    curl -X GET http://localhost:8080/api/v1/billings/1/delinquent
+    ```
+
+    Response:
+    ```json
+    {
+        "billingId": 1,
+        "customerId": 1,
+        "loanId": 1001,
+        "isDelinquent": true
     }
     ```

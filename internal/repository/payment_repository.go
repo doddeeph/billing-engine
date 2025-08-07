@@ -11,7 +11,7 @@ type PaymentRepository interface {
 	WithTransaction(trx *gorm.DB) PaymentRepository
 	WithDB() *gorm.DB
 	FindByBillingIdAndWeek(ctx context.Context, billingID uint, week int) (*model.Payment, error)
-	UpdatePaid(ctx context.Context, payment *model.Payment, paid bool) (*model.Payment, error)
+	UpdatePaid(ctx context.Context, payment *model.Payment) (*model.Payment, error)
 }
 
 type paymentRepository struct {
@@ -39,8 +39,7 @@ func (r *paymentRepository) FindByBillingIdAndWeek(ctx context.Context, billingI
 	return &payment, nil
 }
 
-func (r *paymentRepository) UpdatePaid(ctx context.Context, payment *model.Payment, paid bool) (*model.Payment, error) {
-	payment.Paid = paid
+func (r *paymentRepository) UpdatePaid(ctx context.Context, payment *model.Payment) (*model.Payment, error) {
 	if err := r.db.WithContext(ctx).Save(&payment).Error; err != nil {
 		return nil, err
 	}

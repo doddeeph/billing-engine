@@ -17,6 +17,7 @@ import (
 	"github.com/doddeeph/billing-engine/internal/model"
 	"github.com/doddeeph/billing-engine/internal/repository"
 	"github.com/doddeeph/billing-engine/internal/service"
+	"github.com/doddeeph/billing-engine/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
@@ -125,9 +126,11 @@ func TestIntegration_CreateBilling(t *testing.T) {
 
 	var resp dto.CreateBillingResponse
 	json.Unmarshal(w.Body.Bytes(), &resp)
+
 	assert.NotZero(t, resp.BillingID)
 	assert.NotZero(t, resp.CustomerID)
 	assert.NotZero(t, resp.LoanID)
+
 	assert.Equal(t, 5000000, resp.LoanAmount)
 	assert.Equal(t, 10, resp.LoanInterest)
 	assert.Equal(t, 50, resp.LoanWeeks)
@@ -150,20 +153,33 @@ func TestIntegration_GetBilling(t *testing.T) {
 
 	var resp model.Billing
 	json.Unmarshal(w.Body.Bytes(), &resp)
+
 	assert.NotZero(t, resp.ID)
 	assert.NotZero(t, resp.CustomerID)
 	assert.NotZero(t, resp.LoanID)
+
 	assert.Equal(t, 5000000, resp.LoanAmount)
 	assert.Equal(t, 10, resp.LoanInterest)
 	assert.Equal(t, 50, resp.LoanWeeks)
 	assert.Equal(t, 5500000, resp.Outstanding)
+
 	assert.Len(t, resp.Payments, 50)
 	assert.Equal(t, 1, resp.Payments[0].Week)
 	assert.Equal(t, 110000, resp.Payments[0].Amount)
 	assert.False(t, resp.Payments[0].Paid)
+
+	now := time.Now()
+	weekDateRange := utils.GetWeekDateRange(now.AddDate(0, 0, 7))
+	assert.WithinDuration(t, weekDateRange.StartOfWeek, resp.Payments[0].StartDate, 5*time.Second)
+	assert.WithinDuration(t, weekDateRange.EndOfWeek, resp.Payments[0].DueDate, 5*time.Second)
+
 	assert.Equal(t, 50, resp.Payments[49].Week)
 	assert.Equal(t, 110000, resp.Payments[49].Amount)
 	assert.False(t, resp.Payments[49].Paid)
+
+	weekDateRange = utils.GetWeekDateRange(now.AddDate(0, 0, resp.LoanWeeks*7))
+	assert.WithinDuration(t, weekDateRange.StartOfWeek, resp.Payments[49].StartDate, 5*time.Second)
+	assert.WithinDuration(t, weekDateRange.EndOfWeek, resp.Payments[49].DueDate, 5*time.Second)
 }
 
 func TestIntegration_GetOutstanding(t *testing.T) {
@@ -233,6 +249,8 @@ func TestIntregration_MakePayment(t *testing.T) {
 
 	var paymentResp dto.PaymentResponse
 	json.Unmarshal(w.Body.Bytes(), &paymentResp)
+
 	assert.Equal(t, 5390000, paymentResp.Outstanding)
 	assert.True(t, paymentResp.Payment.Paid)
+	assert.WithinDuration(t, time.Now(), *paymentResp.Payment.PaidDate, 5*time.Second)
 }

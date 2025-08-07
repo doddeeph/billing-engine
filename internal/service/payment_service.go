@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/doddeeph/billing-engine/internal/dto"
 	"github.com/doddeeph/billing-engine/internal/repository"
@@ -48,7 +49,10 @@ func (svc *paymentServiceImpl) MakePayment(ctx context.Context, billingId uint, 
 			return fmt.Errorf("Insufficient loan amount paid for week %d", req.Week)
 		}
 
-		updatedPayment, err := trxPaymentRepo.UpdatePaid(ctx, payment, true)
+		payment.Paid = true
+		now := time.Now()
+		payment.PaidDate = &now
+		updatedPayment, err := trxPaymentRepo.UpdatePaid(ctx, payment)
 		if err != nil {
 			return err
 		}

@@ -4,10 +4,12 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/doddeeph/billing-engine/internal/dto"
 	"github.com/doddeeph/billing-engine/internal/model"
 	"github.com/doddeeph/billing-engine/internal/repository"
+	"github.com/doddeeph/billing-engine/internal/utils"
 	"gorm.io/gorm"
 )
 
@@ -44,12 +46,16 @@ func (svc *billingServiceImpl) WithTransaction(tx *gorm.DB) BillingService {
 func (svc *billingServiceImpl) CreateBilling(ctx context.Context, req dto.CreateBillingRequest) (*model.Billing, error) {
 	outstandingBalance := req.LoanAmount + (req.LoanAmount * req.LoanInterest / 100)
 	loanWeeklyAmount := outstandingBalance / req.LoanWeeks
+	weeklyDateRanges := utils.GenerateWeeklyDateRanges(time.Now(), req.LoanWeeks)
 	payments := make([]model.Payment, req.LoanWeeks)
 	for i := range payments {
 		payments[i] = model.Payment{
-			Amount: loanWeeklyAmount,
-			Week:   i + 1,
-			Paid:   false,
+			Amount:    loanWeeklyAmount,
+			Week:      i + 1,
+			Paid:      false,
+			StartDate: weeklyDateRanges[i+1].StartOfWeek,
+			DueDate:   weeklyDateRanges[i+1].EndOfWeek,
+			PaidDate:  nil,
 		}
 	}
 	billing := &model.Billing{

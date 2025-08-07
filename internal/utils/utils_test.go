@@ -7,6 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestConvertStringToUint(t *testing.T) {
+	actual, _ := ConvertStringToUint("1")
+	assert.Equal(t, uint(1), actual)
+
+	actual, err := ConvertStringToUint("one")
+	if assert.Error(t, err) {
+		assert.Equal(t, "failed to convert string to uint: strconv.ParseUint: parsing \"one\": invalid syntax", err.Error())
+	}
+}
+
 func TestGetWeekRange(t *testing.T) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	today := time.Date(2025, 8, 7, 8, 30, 30, 30, loc)
@@ -22,7 +32,7 @@ func TestGenerateWeeklyDateRanges(t *testing.T) {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
 	today := time.Date(2025, 8, 7, 8, 30, 30, 30, loc)
 	actual := GenerateWeeklyDateRanges(today, 4)
-	
+
 	expectedStartOfWeek := time.Date(2025, 8, 4, 0, 0, 0, 0, loc)
 	assert.Equal(t, expectedStartOfWeek, actual[0].StartOfWeek)
 	expectedEndOfWeek := time.Date(2025, 8, 10, 23, 59, 59, 0, loc)
